@@ -16,10 +16,51 @@ enum BoxColor : Int {
 }
 
 
-class ViewController: UIViewController {
+class ViewController: UIViewController, UICollisionBehaviorDelegate {
+    
+    var gravity : UIGravityBehavior!
+    var collision : UICollisionBehavior!
+    var animator : UIDynamicAnimator!
+    
+    var boxCounter : Int = 0
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        
+        gravity = UIGravityBehavior()
+        collision = UICollisionBehavior()
+        collision.collisionDelegate = self
+        animator = UIDynamicAnimator(referenceView: self.view)
+        
+        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(viewTapped))
+        self.view.addGestureRecognizer(tapGesture)
+        
+        animator.addBehavior(gravity)
+        animator.addBehavior(collision)
+        collision.setTranslatesReferenceBoundsIntoBoundary(with: .zero)
+    }
+    
+    func viewTapped(tapGesture: UITapGestureRecognizer) {
+        let point = tapGesture.location(ofTouch: 0, in: self.view)
+        addBox(x: Int(point.x), y: Int(point.y))
+    }
+    
+    func addBox (x: Int, y: Int){
+        boxCounter += 1
+        
+        let randomColor = self.randomColor()
+        let randomSize = self.randomSize()
+        
+        let view = UIView(frame: CGRect(x: (CGFloat(x - randomSize.width/2)), y: CGFloat(y), width: CGFloat(randomSize.width), height: CGFloat(randomSize.height)))
+        
+        view.tag = boxCounter
+        
+        view.backgroundColor = randomColor
+        
+        self.view.addSubview(view)
+        
+        self.gravity.addItem(view)
+        self.collision.addItem(view)
     }
     
     func randomColor() ->UIColor{
@@ -43,6 +84,30 @@ class ViewController: UIViewController {
         let height = Int(arc4random_uniform(UInt32(100))) + 30
         let width = Int(arc4random_uniform(UInt32(100))) + 30
         return (width,height)
+    }
+    
+    func collisionBehavior(_ behavior: UICollisionBehavior, endedContactFor item: UIDynamicItem, withBoundaryIdentifier identifier: NSCopying?) {
+        
+        if let view = item as? UIView {
+            
+            if view.tag > 1 {
+                
+                let alertVC = UIAlertController(title: "Game Over", message: "You Lose!", preferredStyle: .alert)
+                
+                let alertAction = UIAlertAction(title: "Ok", style: .default, handler: nil)
+                alertVC.addAction(alertAction)
+                
+                present(alertVC, animated: true, completion: { 
+                    
+                    for view in self.view.subviews {
+                        self.gravity.removeItem(view)
+                        self.collision.removeItem(view)
+                        view.removeFromSuperview()
+                    }
+                    self.boxCounter = 0
+                })
+            }
+        }
     }
 }
 
